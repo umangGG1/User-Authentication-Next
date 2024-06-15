@@ -1,18 +1,56 @@
 'use client';
 
 import { useState } from 'react';
+import axios from 'axios';
 import { setToken } from '@/redux/auth/auth.slice';
 import useAuthSession from '../hooks/useAuthSession';
 import { useAppDispatch } from '@/redux/store';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const HomePage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [errors, setErrors] = useState<{username?:string, password?:string}>({});
   const dispatch = useAppDispatch();
   const user = useAuthSession();
 
   const handleLogin = async () => {
-    // Implement the logic to authenticate the user
+
+    //Previous Errors are cleared first
+    setErrors({});
+
+    //Validation
+    if (!username.trim()){
+      setErrors((prevErrors)=>({...prevErrors, username: 'Username is required'}));
+      toast.error('Username is required');
+      return;
+    }
+
+    if (!password.trim()) {
+      setErrors((prevErrors) => ({ ...prevErrors, password: 'Password is required' }));
+      toast.error('Password is required');
+      return;
+    }
+
+    try {
+      const response = await axios.post('/api/login' , {
+        username,
+        password,
+      });
+
+      const {token} = response.data;
+
+      dispatch(setToken(token));
+
+      setUsername('');
+      setPassword('');
+      toast.success('Login successful');
+
+    } catch (error) {
+      console.error('Login failed:', error);
+      toast.error('Login failed. Please check your credentials and try again.');
+    }
   };
 
   return (
@@ -30,15 +68,21 @@ const HomePage = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Username"
-              className="w-full px-4 py-2 mt-4 border rounded-md"
+              className={`w-full px-4 py-2 mt-4 border rounded-md ${
+                errors.password ? 'border-red-500' : 'border-gray-300'
+              }`}
             />
+            {errors.username && <p className="text-sm text-red-500">{errors.username}</p>}
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              className="w-full px-4 py-2 mt-4 border rounded-md"
+              className={`w-full px-4 py-2 mt-4 border rounded-md ${
+                errors.username ? 'border-red-500' : 'border-gray-300'
+              }`}
             />
+             {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
             <button
               onClick={handleLogin}
               className="w-full px-4 py-2 mt-6 font-bold text-white bg-blue-500 rounded-md"
@@ -59,6 +103,7 @@ if (user) {
           </pre>
         </div>
       </div>
+      <ToastContainer />
     </div>
   );
 };
